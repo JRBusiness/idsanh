@@ -1,0 +1,19 @@
+{
+    "Address": "123 MAIN STREET",
+    "CLASS": "D",
+    "City_State_Zip": "PHOENIX, AZ 85007",
+    "DD": "12345678",
+    "DOB": "02/01/1996",
+    "EXP": "02/01/2018",
+    "First_Name": "JANICE",
+    "HAIR": "BRO",
+    "Height": "5'-05\"",
+    "ISS": "01/10/2013",
+    "Last_Name": "SAMPLE",
+    "No.": "12345670",
+    "RESTRICTION": "NONE",
+    "SEX": "F",
+    "State_Name": "Arizona",
+    "Weight": "lb",
+    "id_type": "DRIVER LICENSE"
+}

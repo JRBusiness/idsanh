@@ -1,0 +1,20 @@
+{
+    "type": "DRIVER LICENSE",
+    "state": "Nevada",
+    "license_no": "1234567890",
+    "class": "D",
+    "date_of_birth": "06/04/1975",
+    "expire_date": "10/27/2028",
+    "first_name": "JOHN LEWIS",
+    "last_name": "SAMPLE",
+    "street_address": "123 MAIN STREET",
+    "city_state_zipcode": "CARSON CITY, NV 00000-1234",
+    "restriction": "NONE",
+    "issue_date": "10/25/2020",
+    "sex": "M",
+    "height": "5'-10\"",
+    "eyes": "BRO",
+    "weight": "185",
+    "hair": "BRO",
+    "DD": "123456789012345678901"
+}

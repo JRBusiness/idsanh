@@ -1,0 +1,29 @@
+# Default values for Business services engine
+replicaCount: 3
+
+accountId: "899720648664"
+
+fqdn: id-scanner.advinow.ai
+
+docker:
+  accountId: "848070539938"
+
+image:
+  repository: 848070539938.dkr.ecr.us-west-2.amazonaws.com/id-scanner
+  pullPolicy: Always
+  tag: advinowevelopment-kube_latest
+  nginxtag: kubernetes-nginx-kube_latest
+  imagePullSecrets: ecrcreds
+
+service:
+  vault: https://vault.advinow.int:8200
+  role: arn:aws:iam::899720648664:role/advinow-builder-role
+  region: us-west-2
+  environment: development
+  type: NodePort
+  port: 80
+
+hpa:
+  min: 3
+  max: 3
+  cpu: 50

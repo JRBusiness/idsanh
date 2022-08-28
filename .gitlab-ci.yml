@@ -1,0 +1,86 @@
+image: python:3.7
+
+stages:
+- build
+- deploy
+
+variables:
+  K8_SERVICE_NAME: id-scanner
+
+kubernetes_build:
+  stage: build
+  image: docker:19.03.1
+  only:
+    - master
+    - development
+    - tags
+  tags:
+    - SHELL
+  script:
+    - export SENTRY_RELEASE="$(git describe --tags --always)"
+    - echo "$SENTRY_RELEASE" > release_version
+    - 'export REQUIREMENTS="$(if [[ $CI_COMMIT_REF_NAME == development ]]; then echo development; elif [[ $CI_COMMIT_REF_NAME == master ]]; then echo pilot; else echo production; fi)"'
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -f docker/Dockerfile.nginx -t $CI_REGISTRY_IMAGE:$SENTRY_RELEASE-nginx .
+    - docker build --build-arg REQUIREMENTS_FILE=$REQUIREMENTS.txt -f docker/Dockerfile -t $CI_REGISTRY_IMAGE:$SENTRY_RELEASE .
+    - docker push $CI_REGISTRY_IMAGE:$SENTRY_RELEASE
+    - docker push $CI_REGISTRY_IMAGE:$SENTRY_RELEASE-nginx
+
+deploy_kubernetes_development:
+  stage: deploy
+  environment: development
+  image: docker:19.03.1
+  tags:
+    - SHELL
+  only:
+    - development
+  script:
+    - export KUBE_ENVIRONMENT=dev
+    - export ENVIRONMENT=development
+    - export RELEASE="$(git describe --tags --always)"
+    - kubectl config use-context k8advinow-$KUBE_ENVIRONMENT.k8s.local
+    - helm upgrade --set image.tag=$RELEASE --set image.nginxtag=$RELEASE-nginx --set service.environment=$ENVIRONMENT $K8_SERVICE_NAME helm-id-scanner/ --debug
+    - sleep 1
+    - /usr/local/bin/kube_deploy_status $K8_SERVICE_NAME
+    - kubectl config use-context k8advinow-$KUBE_ENVIRONMENT.k8s.local
+    - kubectl rollout restart deployment $K8_SERVICE_NAME
+
+deploy_kubernetes_pilot:
+  stage: deploy
+  environment: pilot
+  image: docker:19.03.1
+  tags:
+    - SHELL
+  only:
+    - master
+  script:
+    - export KUBE_ENVIRONMENT=pilot
+    - export ENVIRONMENT=pilot
+    - export RELEASE="$(git describe --tags --always)"
+    - kubectl config use-context k8advinow-$KUBE_ENVIRONMENT.k8s.local
+    - helm upgrade --set image.tag=$RELEASE --set image.nginxtag=$RELEASE-nginx --set service.environment=$ENVIRONMENT $K8_SERVICE_NAME helm-id-scanner/ --debug
+    - sleep 1
+    - /usr/local/bin/kube_deploy_status $K8_SERVICE_NAME
+    - kubectl config use-context k8advinow-$KUBE_ENVIRONMENT.k8s.local
+    - kubectl rollout restart deployment $K8_SERVICE_NAME
+
+deploy_kubernetes_production:
+  stage: deploy
+  environment: production
+  image: docker:19.03.1
+  tags:
+    - SHELL
+  only:
+    - tags
+  when: manual
+  script:
+    - export KUBE_ENVIRONMENT=production
+    - export ENVIRONMENT=production
+    - export RELEASE="$(git describe --tags --always)"
+    - kubectl config use-context k8advinow-$KUBE_ENVIRONMENT.k8s.local
+    - helm upgrade --set image.tag=$RELEASE --set image.nginxtag=$RELEASE-nginx --set service.environment=$ENVIRONMENT $K8_SERVICE_NAME helm-id-scanner/ --debug
+    - sleep 1
+    - /usr/local/bin/kube_deploy_status $K8_SERVICE_NAME
+    - kubectl config use-context k8advinow-$KUBE_ENVIRONMENT.k8s.local
+    - kubectl rollout restart deployment $K8_SERVICE_NAME
+

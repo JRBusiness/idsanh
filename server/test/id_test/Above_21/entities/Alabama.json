@@ -1,0 +1,19 @@
+{
+    "type": "DRIVER LICENSE",
+    "state": "ALABAMA",
+    "license_no": "12345678",
+    "class": "D",
+    "date_of_birth": "05-05-1984",
+    "expire_date": "09-04-2022",
+    "first_name": "HEIDI",
+    "last_name": "SAMPLE",
+    "street_address": "SAMPLE STREET",
+    "city_state_zipcode": "MOBILE AL 36608-5658",
+    "restriction": "ATIL",
+    "issue_date": "09-04-2018",
+    "sex": "SEXF",
+    "height": "5-03",
+    "eyes": "BRO",
+    "weight": "146",
+    "hair": "BLO"
+}

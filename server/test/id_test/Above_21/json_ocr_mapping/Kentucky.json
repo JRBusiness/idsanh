@@ -1,0 +1,18 @@
+{
+    "Address": "123 SAMPLE STREET",
+    "CLASS": "D",
+    "City_State_Zip": "",
+    "DD": "00000001",
+    "DOB": "07/15/1980",
+    "END": "NONE",
+    "EXP": "02/15/2027",
+    "EYES": "BLU",
+    "First_Name": "JOHN",
+    "Height": "5'-10\"",
+    "ISS": "02/15/2019",
+    "NO.": "S00-000-001",
+    "RESTRICTIONS": "1",
+    "SEX": "M",
+    "State_Name": "APT. 2",
+    "id_type": "DRIVER'S LICENSE"
+}

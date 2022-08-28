@@ -1,0 +1,141 @@
+INPUT:
+  TEST:
+    TRANSFORMS:
+    - NAME: Resize
+      INTERPOLATION: 1
+      P: 1
+      HEIGHT: 1200
+      WIDTH: 900
+  TRAIN:
+    TRANSFORMS:
+    - NAME: Resize
+      INTERPOLATION: 1
+      P: 1
+      HEIGHT: 1200
+      WIDTH: 900
+TRAIN:
+  EARLY_STOPPING:
+    METRIC:
+      NAME: mAP
+    MIN_DELTA: 0.0
+    PATIENCE: 5
+  METRICS:
+  - NAME: AverageLoss
+  - NAME: Mask mAP
+    RECALL_THRESHOLDS:
+    - 0.0
+    - 1.01
+    - 0.01
+    MPOLICY: greedy
+    IOU_THRESHOLDS:
+    - 0.5
+    - 1
+    - 0.05
+  - NAME: mAP
+    IOU_THRESHOLDS:
+    - 0.5
+    - 1
+    - 0.05
+    MPOLICY: greedy
+    RECALL_THRESHOLDS:
+    - 0.0
+    - 1.01
+    - 0.01
+  - NAME: AverageLoss
+  EVAL_PERIOD: 20
+  SWAG_PERIOD: null
+  SWAG_START: null
+  WEIGHTED_SAMPLING: false
+  EPOCHS: 20
+SOLVER:
+  NAME: Adam
+  AMSGRAD: true
+  BETAS:
+  - 0.9
+  - 0.999
+  EPS: 0.0003
+  LR: 0.001
+  WEIGHT_DECAY: 0
+LOSS:
+  NAME: CombinedSegmentationLoss
+GLOBAL:
+  FAMILY: segmentor
+  SEED: 2021
+SCHEDULER:
+  NAME: None
+DATALOADER:
+  TRAIN:
+    NUM_WORKERS: 3
+    BATCH_SIZE: 6
+  TEST:
+    NUM_WORKERS: 3
+    BATCH_SIZE: 3
+MODEL:
+  NAME: Mask R-CNN
+  ANCHOR_GENERATOR:
+    ASPECT_RATIOS:
+    - - 0.5
+      - 1.0
+      - 2.0
+    SIZES:
+    - - 32
+    - - 64
+    - - 128
+    - - 256
+    - - 512
+  BACKBONE:
+    FREEZE_AT: 2
+    NAME: build_resnet_fpn_backbone
+  FPN:
+    NORM: ''
+  MASK_ON: true
+  META_ARCHITECTURE: GeneralizedRCNN
+  POINT_HEAD:
+    NAME: PointRendMaskHead
+    POINT_HEAD_ON: false
+  RESNETS:
+    DEPTH: 50
+    NORM: FrozenBN
+    OUT_FEATURES:
+    - res2
+    - res3
+    - res4
+    - res5
+  ROI_BOX_HEAD:
+    NAME: FastRCNNConvFCHead
+    NORM: ''
+    NUM_FC: 2
+    POOLER_RESOLUTION: 7
+    POOLER_SAMPLING_RATIO: 2
+  ROI_HEADS:
+    IN_FEATURES:
+    - p2
+    - p3
+    - p4
+    - p5
+    - p6
+    NAME: StandardROIHeads
+    NUM_CLASSES: 1
+  ROI_MASK_HEAD:
+    NAME: MaskRCNNConvUpsampleHead
+    NORM: ''
+    NUM_CONV: 4
+    POOLER_RESOLUTION: 14
+  RPN:
+    IN_FEATURES:
+    - p2
+    - p3
+    - p4
+    - p5
+    - p6
+    IOU_THRESHOLDS:
+    - 0.3
+    - 0.7
+    POST_NMS_TOPK_TEST: 1000
+    POST_NMS_TOPK_TRAIN: 1000
+    PRE_NMS_TOPK_TEST: 2000
+    PRE_NMS_TOPK_TRAIN: 4000
+  TYPE: MaskRCNN
+  WEIGHTS: weights/model.pt
+  PROPOSAL_GENERATOR:
+    NAME: RPN

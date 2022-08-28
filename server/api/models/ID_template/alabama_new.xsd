@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="annotation" type="annotationType"/>
+  <xs:complexType name="sourceType">
+    <xs:sequence>
+      <xs:element type="xs:string" name="database"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="sizeType">
+    <xs:sequence>
+      <xs:element type="xs:string" name="width"/>
+      <xs:element type="xs:string" name="height"/>
+      <xs:element type="xs:string" name="depth"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="bndboxType">
+    <xs:sequence>
+      <xs:element type="xs:string" name="xmin"/>
+      <xs:element type="xs:string" name="ymin"/>
+      <xs:element type="xs:string" name="xmax"/>
+      <xs:element type="xs:string" name="ymax"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="objectType">
+    <xs:sequence>
+      <xs:element type="xs:string" name="name"/>
+      <xs:element type="xs:string" name="pose"/>
+      <xs:element type="xs:string" name="truncated"/>
+      <xs:element type="xs:string" name="difficult"/>
+      <xs:element type="bndboxType" name="bndbox"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="annotationType">
+    <xs:sequence>
+      <xs:element type="xs:string" name="folder"/>
+      <xs:element type="xs:string" name="filename"/>
+      <xs:element type="xs:string" name="path"/>
+      <xs:element type="sourceType" name="source"/>
+      <xs:element type="sizeType" name="size"/>
+      <xs:element type="xs:string" name="segmented"/>
+      <xs:element type="objectType" name="object" maxOccurs="unbounded" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute type="xs:string" name="verified"/>
+  </xs:complexType>
+</xs:schema>
