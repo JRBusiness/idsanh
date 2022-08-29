@@ -1,19 +1,22 @@
 import mmcv
 import copy
 
-import numpy as np
-from PIL import Image
-from mmocr.utils.box_util import stitch_boxes_into_lines
 from mmocr.datasets.kie_dataset import KIEDataset
-from mmocr.datasets.pipelines.crop import crop_img
 from mmocr.apis.inference import model_inference
 from mmocr.utils.ocr import MMOCR
-from shapely.geometry import Polygon
-from paddleocr import PaddleOCR, draw_ocr
+from paddleocr import PaddleOCR
 
 ocr = PaddleOCR(use_angle_cls=True, lang='en')
 det_batch_size = 0
 merge_xdist = 20
+
+
+def get_box(array):
+    result = []
+    for i in array:
+        for a in i:
+            result.append(a)
+    return result
 
 
 def key_info_extraction(inference_handler, arrays, filename, kie_model=None):
@@ -28,20 +31,19 @@ def key_info_extraction(inference_handler, arrays, filename, kie_model=None):
         boxes = [line[0] for line in recog_results]
         txts = [line[1][0] for line in recog_results]
         scores = [line[1][1] for line in recog_results]
-        im_show = draw_ocr(filename, boxes, txts, scores, font_path='server/shared/helpers/mmocr/utils/simfang.ttf')
-        im_show = Image.fromarray(im_show)
-        im_show.save("output/image.png")
-        im_show.show()
+        # im_show = draw_ocr(filename, boxes, txts, scores, font_path='server/shared/helpers/kie/utils/simfang.ttf')
+        # im_show = Image.fromarray(im_show)
+        # im_show.save("output/image.png")
+        # im_show.show()
         for recog_result in recog_results:
             box_res = {}
-            array_box = np.squeeze(recog_result[0])
-            poly_box = Polygon(array_box).exterior.coords.xy
-            box_res['box'] = [round(x) for x in poly_box]
+            array_box = recog_result[0]
+            box_res['box'] = get_box(array_box)
             text_score = recog_result[1][1]
             text = recog_result[1][0]
             if isinstance(text_score, list):
                 text_score = sum(text_score) / max(1, len(text))
-            box_res['box_score'] = box_res['text_score'] = float(text_score)
+            box_res['box_score'] = box_res['text_score'] = text_score
             box_res['text'] = text
             img_e2e_res['result'].append(box_res)
 
@@ -70,27 +72,25 @@ def key_info_extraction(inference_handler, arrays, filename, kie_model=None):
         gt_bboxes = data['gt_bboxes'].data.numpy().tolist()
         #  Get the annotations data from the dataset used to train the KIE model.
         labels = inference_handler.generate_kie_labels(kie_result, gt_bboxes,
-                                              kie_model.class_list)
+                                                       kie_model.class_list)
         for i in range(len(gt_bboxes)):
             img_e2e_res['result'][i]['label'] = labels[i][0]
             img_e2e_res['result'][i]['label_score'] = labels[i][1]
         return img_e2e_res
     except Exception as e:
-        print(e)
+        raise(e)
 
 
-def ocr_module(filename, det, recog): # Executing the ocr module ....
+def ocr_module(filename):  # Executing the ocr module ....
     arrays = [mmcv.imread(filename)]
     inference_handler = MMOCR(
         kie='SDMGR',  # Our piece of cheese that handle the key extraction.
-        kie_config="server/shared/helpers/mmocr/models/new_models/checkpoint_config.py",
-        kie_ckpt="server/shared/helpers/mmocr/models/new_models/checkpoint.pth",
+        kie_config="server/shared/helpers/kie/config.py",
+        kie_ckpt="server/shared/helpers/kie/checkpoint.pth",
     )
-
     return key_info_extraction(
         inference_handler,
         arrays,
         filename,
         kie_model=inference_handler.kie_model,
     )
-
