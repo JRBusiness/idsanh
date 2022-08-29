@@ -1,0 +1,132 @@
+import io
+import json
+import os
+import sys
+
+import mmcv
+import copy
+import structlog
+import numpy as np
+import cv2
+
+from server.shared.helpers.tools.infer import utility
+from server.shared.helpers.ppocr.utils.utility import check_and_read_gif
+from server.shared.helpers.tools.infer.predict_det import TextDetector
+from server.shared.helpers.mmocr.utils.box_util import stitch_boxes_into_lines
+from server.shared.helpers.mmocr.datasets.kie_dataset import KIEDataset
+from server.shared.helpers.mmocr.datasets.pipelines.crop import crop_img
+from server.shared.helpers.mmocr.apis.inference import model_inference
+from server.shared.helpers.mmocr.utils.ocr import MMOCR
+from server.logs import LogHandler
+from server.shared.helpers.tools.infer.predict_rec import TextRecognizer
+from settings import config
+
+
+det_batch_size = 0
+merge_xdist = 20
+variable = LogHandler("ocr_engine")
+structlog.configure(processors=[variable.event_dict, structlog.processors.JSONRenderer()])
+structlog.PrintLoggerFactory(sys.stdout)
+logger = structlog.get_logger()
+
+
+def detection(image_file):
+    text_detector = TextDetector(config)
+    dt_boxes, _ = text_detector(image_file)
+    return dt_boxes
+
+
+def recognition(image_file):
+    text_recognizer = TextRecognizer(config)
+    try:
+        rec_res, _ = text_recognizer(image_file)
+        return rec_res
+    except Exception as E:
+        logger.info(E)
+        exit()
+
+
+def key_info_extraction(inference_handler, arrays, filename, batch_mode, kie_model=None):
+    det_result = detection(filename)
+    print(det_result)# prepare the text detection model.
+    bboxes_list = [res['boundary_result'] for res in det_result]
+    kie_dataset = KIEDataset(
+        dict_file=kie_model.cfg.data.test.dict_file)
+    box_imgs = []
+    img_e2e_res = []
+    for bbox in bboxes_list:
+        box_res = {}
+        box_res['box'] = [round(x) for x in bbox[:-1]]
+        box_res['box_score'] = float(bbox[-1])
+        box = bbox[:8]
+        if len(bbox) > 9:
+            min_x = min(bbox[0:-1:2])
+            min_y = min(bbox[1:-1:2])
+            max_x = max(bbox[0:-1:2])
+            max_y = max(bbox[1:-1:2])
+            box = [
+                min_x, min_y, max_x, min_y, max_x, max_y, min_x, max_y
+            ]
+        box_img = crop_img(arrays, box)
+        # Prepare the text recognition model
+        if batch_mode:
+            box_imgs.append(box_img)
+        else:
+            recog_result = recognition(filename)
+            text = recog_result['text']
+            text_score = recog_result['score']
+            if isinstance(text_score, list):
+                text_score = sum(text_score) / max(1, len(text))
+            box_res['text'] = text
+            box_res['text_score'] = text_score
+            img_e2e_res['result'].append(box_res)
+        img_e2e_res['result'] = stitch_boxes_into_lines(
+            img_e2e_res['result'], merge_xdist, 0.5)
+
+        annotations = copy.deepcopy(img_e2e_res['result'])
+        for i, ann in enumerate(annotations):
+            min_x = min(ann['box'][::2])
+            min_y = min(ann['box'][1::2])
+            max_x = max(ann['box'][::2])
+            max_y = max(ann['box'][1::2])
+            annotations[i]['box'] = [
+                min_x, min_y, max_x, min_y, max_x, max_y, min_x, max_y
+            ]
+        ann_info = kie_dataset._parse_anno_info(annotations)
+        ann_info['ori_bboxes'] = ann_info.get('ori_bboxes',
+                                              ann_info['bboxes'])
+        ann_info['gt_bboxes'] = ann_info.get('gt_bboxes',
+                                             ann_info['bboxes'])
+        #  Set up the KIE model for key info extraction.
+        kie_result, data = model_inference(
+            kie_model,
+            arr,
+            ann=ann_info,
+            return_data=True,
+            batch_mode=False
+        )
+        gt_bboxes = data['gt_bboxes'].data.numpy().tolist()
+        #  Get the annotations data from the dataset used to train the KIE model.
+        labels = inference_handler.generate_kie_labels(kie_result, gt_bboxes,
+                                              kie_model.class_list)
+        for i in range(len(gt_bboxes)):
+            img_e2e_res['result'][i]['label'] = labels[i][0]
+            img_e2e_res['result'][i]['label_score'] = labels[i][1]
+        return img_e2e_res
+
+
+def ocr_module(filename):
+    arrays = [mmcv.imread(filename)]
+    inference_handler = MMOCR(    # and these 2 give the highest accuracy.
+        kie='SDMGR',  # Our piece of cheese that handle the key extraction.
+        kie_config="server/shared/helpers/kie/config.py",
+        kie_ckpt="server/shared/helpers/kie/checkpoint.pth",
+    )
+    return key_info_extraction(
+        inference_handler,
+        arrays,
+        filename,
+        batch_mode=False,
+        kie_model=inference_handler.kie_model,
+    )
+
